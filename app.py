@@ -1,44 +1,75 @@
-import time, os
+import time, os, datetime
 import json, requests
-import gpio
+import notificacao
+import RPi.GPIO as GPIO
 
-botao = gpio.Gpio(0,16,0)
-trava = gpio.Gpio(0,18,0)
+def button_callback(channel):
+    criaNotificacao()
 
-while True:
-    response = requests.get("http://127.0.0.1:5000/gpio/{0}".format(botao.pin))
+def criaNotificacao():
+    resp = verificaNotificacao()
+    if not resp:
+        notificacao = {"status": "tocando"}
+        post = requests.post("http://127.0.0.1:5000/notificacao", json=notificacao)
+        if post.status_code != 201:
+            print('POST /notificacao {}'.format(post.status_code))
+        else:
+            print('Notificacao criada. ID: {}'.format(post.json()["_id"]))
+
+
+def verificaNotificacao():
+    response = requests.get("http://127.0.0.1:5000/notificacao/{0}".format("tocando"))
     print(response.status_code)
     dados = json.loads(response.content)
     resp = 0
     if response.status_code == 206:
         print(response.status_code)
         print(dados[0]['message'])
+        print(notificacao.status)
     else:
-        recebido = gpio.Gpio(dados[0]['_id'],dados[0]['pin'],dados[0]['status'])
-        if recebido.status == 1:
-            resp = 1
+        notificacao.id = dados[0]['_id']
+        notificacao.dataehora = dados[0]['dataehora']
+        notificacao.status = dados[0]['status']
+        print("Já existe uma notificacao com status tocando. ID: {}".format(notificacao.status))
+        resp = 1
+    return resp
 
+notificacao = notificacao.Notificacao(0, datetime.datetime.now, 'aguardando')
+botao = 16
+led = 18
+
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(botao,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(led, GPIO.OUT)
+
+GPIO.add_event_detect(botao,GPIO.RISING,callback=button_callback)
+
+continua = 1
+while continua:
+    resp = verificaNotificacao()
     print("Opções:")
     print("1 - Tocar Botão Campainha")
     print("2 - Abrir Trava Portão")
+    print("3 - Sair")
     print("-------------------------")
-    if resp==0:
-      print("Digite: ")
-      resp = input()
+    if not resp:
+        print("Digite: ")
+        resp = input()
+        resp = int(resp)
+        if resp == 1:
+            criaNotificacao()
+        elif resp == 2:
+            GPIO.output(led, 1)
+            print("Portão aberto")
+            time.sleep(3)
+            GPIO.output(led, 0)
+        elif resp == 3:
+            continua = 0
+        else:
+            print("Digite 1 ou 2")
     else:
-      print("Recebeu 1")
-    print("-------------------------")
-
-    resp = int(resp)
-    if resp == 1:
-        print("Tocou campainha")
-        botao.status=1
-    elif resp == 2:
-        print("Abriu portão")
-        trava.status = 1
-    else:
-        print("Digite 1 ou 2")
+        print("-------------------------")
     time.sleep(3)
-    botao.status = 0
-    trava.status = 0
     os.system("clear")
+
+GPIO.cleanup
