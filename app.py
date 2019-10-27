@@ -50,10 +50,11 @@ def atualizaGpio():
         abrirPortao()               
         gpio.status = 0
         jGpio = {"pin": gpio.pin, "status": gpio.status}
-        print(jGpio)
         put = requests.put("http://127.0.0.1:5000/gpio", json=jGpio)
         if put.status_code != 201:
             print('POST /notificacao {}'.format(put.status_code))
+        os.system("clear")
+        exibirMenu()
 
 def verificaGpio():
     response = requests.get("http://127.0.0.1:5000/gpio/{0}".format(led))
@@ -67,7 +68,6 @@ def verificaGpio():
         gpio.idGpio = dados[0]['_id']
         gpio.pin = dados[0]['pin']
         gpio.status = dados[0]['status']
-        print("O gpio foi encontrado")
         encontrou = 1
     return encontrou
 
@@ -103,15 +103,10 @@ def appinput(continua):
     
     GPIO.cleanup
 
-def handler(continua):    
-    teste =0
+def handler(continua):
     while continua[0]:
         atualizaGpio()
         time.sleep(1)
-        if teste == 5:
-            continua[0] = 0
-        teste+=1
-        time.sleep(5)
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(botao,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
