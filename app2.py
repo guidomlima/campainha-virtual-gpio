@@ -53,7 +53,7 @@ def atualizaGpio():
         jGpio = {"pin": gpio.pin, "status": gpio.status}
         put = requests.put("http://127.0.0.1:5000/gpio", json=jGpio)
         if put.status_code != 201:
-            print('POST /notificacao {}'.format(put.status_code))
+            print('POST /gpio {}'.format(put.status_code))
         os.system("clear")
         exibirMenu()
 
